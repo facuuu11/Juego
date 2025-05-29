@@ -1,5 +1,5 @@
 import pygame
-import sys
+import os
 
 pygame.init()
 
@@ -15,15 +15,20 @@ WHITE = (255, 255, 255)
 BROWN = (139, 69, 19)
 
 
-player_img = pygame.image.load("player.png")
-player_img = pygame.transform.scale(player_img, (40, 50))
-donkey_img1 = pygame.image.load("donkey.png")
-donkey_img2 = pygame.transform.flip(donkey_img1, True, False)  
-princess_img = pygame.image.load("princess.png")
+salto_sound = pygame.mixer.Sound("salto.wav")
+
+
+player_img = pygame.image.load(os.path.join("img", "player.png")).convert_alpha()
+player_img = pygame.transform.scale(player_img, (30, 40))
+
+donkey_img = pygame.image.load(os.path.join("img", "donkey_kong.png")).convert_alpha()
+donkey_img = pygame.transform.scale(donkey_img, (50, 50))
+
+princess_img = pygame.image.load(os.path.join("img", "princess.png")).convert_alpha()
 princess_img = pygame.transform.scale(princess_img, (30, 40))
-barrel_img = pygame.image.load("barrel.png")
-barrel_img = pygame.transform.scale(barrel_img, (25, 25))
-salto_sonido = pygame.mixer.Sound("salto.wav")
+
+barrel_img = pygame.image.load(os.path.join("img", "barrel.png")).convert_alpha()
+barrel_img = pygame.transform.scale(barrel_img, (20, 20))
 
 
 platforms = [
@@ -32,29 +37,27 @@ platforms = [
     pygame.Rect(100, 450, 600, 20),
     pygame.Rect(0, HEIGHT - 20, WIDTH, 20),
 ]
+
 platform_directions = [1, -1, 1, 0]
 
 
-donkey_rect = pygame.Rect(150, 100, 50, 50)
-princess_rect = pygame.Rect(700, 100, 30, 40)
+donkey_kong = pygame.Rect(150, 100, 50, 50)
+
+
+princess = pygame.Rect(700, 100, 30, 40)
+
+
 player = pygame.Rect(200, HEIGHT - 60, 30, 40)
 player_vel_y = 0
 is_jumping = False
-GRAVITY = 0.8
+GRAVITY = 1
 
-
-puntos = 0
-font = pygame.font.SysFont("Arial", 30)
-
-
-donkey_timer = 0
-donkey_frame = 0
 
 class Barrel:
     def __init__(self):
         self.platform_index = 0
         plat = platforms[self.platform_index]
-        self.rect = barrel_img.get_rect(midbottom=(donkey_rect.centerx, plat.top))
+        self.rect = pygame.Rect(donkey_kong.centerx, plat.top - 20, 20, 20)
         self.direction = platform_directions[self.platform_index]
         self.falling = False
         self.vel_y = 0
@@ -63,6 +66,7 @@ class Barrel:
         if self.falling:
             self.vel_y += GRAVITY
             self.rect.y += self.vel_y
+
             if self.platform_index + 1 < len(platforms):
                 next_plat = platforms[self.platform_index + 1]
                 if self.rect.colliderect(next_plat) and self.vel_y >= 0:
@@ -78,31 +82,12 @@ class Barrel:
                 self.falling = True
 
     def draw(self, surface):
-        surface.blit(barrel_img, self.rect)
+        surface.blit(barrel_img, self.rect.topleft)
 
 barrels = []
+
 SPAWN_BARREL = pygame.USEREVENT + 1
-pygame.time.set_timer(SPAWN_BARREL, 4000)
-
-
-def mostrar_pantalla_inicio():
-    screen.fill(WHITE)
-    titulo = font.render("Donkey Kong Zigzag", True, (0,0,0))
-    instruccion = font.render("Presiona ESPACIO para comenzar", True, (0,0,0))
-    screen.blit(titulo, (WIDTH//2 - titulo.get_width()//2, HEIGHT//2 - 50))
-    screen.blit(instruccion, (WIDTH//2 - instruccion.get_width()//2, HEIGHT//2))
-    pygame.display.flip()
-    esperando = True
-    while esperando:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE:
-                    esperando = False
-
-mostrar_pantalla_inicio()
+pygame.time.set_timer(SPAWN_BARREL, 15000)
 
 
 running = True
@@ -110,6 +95,7 @@ while running:
     clock.tick(FPS)
     screen.fill(WHITE)
 
+    
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
@@ -117,12 +103,6 @@ while running:
             barrels.append(Barrel())
 
     
-    donkey_timer += 1
-    if donkey_timer % 30 == 0:
-        donkey_frame = 1 - donkey_frame
-    donkey_img = donkey_img1 if donkey_frame == 0 else donkey_img2
-
-   
     keys = pygame.key.get_pressed()
     if keys[pygame.K_LEFT]:
         player.x -= 5
@@ -131,12 +111,16 @@ while running:
     if keys[pygame.K_SPACE] and not is_jumping:
         player_vel_y = -15
         is_jumping = True
-        salto_sonido.play()
+        salto_sound.play()
 
+   
     player.x = max(0, min(WIDTH - player.width, player.x))
+
+    
     player_vel_y += GRAVITY
     player.y += player_vel_y
 
+    
     for plat in platforms:
         if player.colliderect(plat) and player_vel_y >= 0:
             player.bottom = plat.top
@@ -148,29 +132,26 @@ while running:
         pygame.draw.rect(screen, BROWN, plat)
 
     
-    screen.blit(donkey_img, donkey_rect)
-    screen.blit(princess_img, princess_rect)
-    screen.blit(player_img, player)
+    screen.blit(donkey_img, donkey_kong.topleft)
+    screen.blit(princess_img, princess.topleft)
+    screen.blit(player_img, player.topleft)
 
-   
+    
     for barrel in barrels[:]:
         barrel.update()
         barrel.draw(screen)
+
         if player.colliderect(barrel.rect):
             print("¡Perdiste!")
             running = False
+
         if barrel.rect.top > HEIGHT:
             barrels.remove(barrel)
 
    
-    if player.colliderect(princess_rect):
-        puntos += 100
+    if player.colliderect(princess):
         print("¡Ganaste!")
         running = False
-
-    
-    puntos_texto = font.render(f"Puntos: {puntos}", True, (0,0,0))
-    screen.blit(puntos_texto, (10,10))
 
     pygame.display.flip()
 
